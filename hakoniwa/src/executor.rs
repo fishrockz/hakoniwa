@@ -210,7 +210,7 @@ impl Executor {
         Self {
             prog: prog.to_string(),
             argv: argv.iter().map(|arg| String::from(arg.as_ref())).collect(),
-            container_root_dir: contrib::tmpdir::pathname("hakoniwa"),
+            container_root_dir: PathBuf::from("/home/will/projects/buildsystems/yaba/hi"),
             dir: PathBuf::from("/"),
             uid_mappings: IDMap {
                 container_id: uid,
@@ -595,14 +595,7 @@ impl Executor {
         self.lookup_executable()?;
         self.log_before_forkexec();
 
-        // Create container root dir under `/tmp` dir.
-        let _container_root_dir =
-            contrib::tmpdir::new(&self.container_root_dir).map_err(|err| {
-                Error::_ExecutorRunError(format!(
-                    "create dir {:?} failed: {}",
-                    self.container_root_dir, err
-                ))
-            })?;
+
 
         // Use a pipe to communicate between parent process and child process.
         let cpr_pipe = contrib::nix::io::pipe().map_err(|err| {
