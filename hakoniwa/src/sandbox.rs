@@ -1,7 +1,7 @@
 use handlebars::Handlebars;
 use lazy_static::lazy_static;
 use serde::Deserialize;
-use std::{collections::HashMap, str};
+use std::{collections::HashMap, path::PathBuf, str};
 
 use crate::{
     contrib::handlebars::{fs_read_to_string_helper, os_env_helper, os_homedir_helper},
@@ -37,6 +37,8 @@ pub struct SandboxPolicy {
     limits: Limits,
     #[serde(default)]
     seccomp: Option<Seccomp>,
+    #[serde(default)]
+    root: Option<PathBuf>
 }
 
 impl SandboxPolicy {
@@ -71,6 +73,8 @@ impl Sandbox {
 
     /// Create a [Executor](super::Executor).
     pub fn command<SA: AsRef<str>>(&self, prog: &str, argv: &[SA]) -> Executor {
+        
+
         let mut executor = Executor::new(prog, argv);
         let policy = match &self.policy {
             Some(val) => val,
@@ -103,6 +107,11 @@ impl Sandbox {
 
         executor.limits(&policy.limits);
         executor.seccomp(&policy.seccomp);
+
+        if let Some(root) = &policy.root {
+            executor.root(root);
+        }
+
         executor
     }
 }

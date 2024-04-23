@@ -153,7 +153,7 @@ pub struct Executor {
     pub(crate) envp: HashMap<String, String>,
 
     /// The container root in the host.
-    pub(crate) container_root_dir: PathBuf,
+    pub(crate) container_root_dir: Option<PathBuf>,
 
     /// The working directory in container.
     pub(crate) dir: PathBuf,
@@ -207,10 +207,12 @@ impl Executor {
     pub(crate) fn new<SA: AsRef<str>>(prog: &str, argv: &[SA]) -> Self {
         let uid = Uid::current().as_raw();
         let gid = Gid::current().as_raw();
+        
         Self {
             prog: prog.to_string(),
             argv: argv.iter().map(|arg| String::from(arg.as_ref())).collect(),
-            container_root_dir: PathBuf::from("/home/will/projects/buildsystems/yaba/hi"),
+            //container_root_dir,
+            //container_root_dir: contrib::tmpdir::pathname("hakoniwa"),
             dir: PathBuf::from("/"),
             uid_mappings: IDMap {
                 container_id: uid,
@@ -460,6 +462,19 @@ impl Executor {
         Ok(self)
     }
 
+    /// Set a location to pivot into when launching the sandbox.
+    ///
+    /// Note that if this is not set then a tmp dir will be created.
+    pub fn root(&mut self, root: impl Into<PathBuf>) -> &mut Self {
+        let root: PathBuf = root.into();
+        if root.is_absolute() {
+            self.container_root_dir = Some(root);
+        } else {
+            panic!("this method must be called with a absolute path")
+        };
+        self
+    } 
+
     /// Where the stdout write to. Default to [Stdio::initial()].
     ///
     /// [Stdio::initial()] - Redirect to [ExecutorResult::stdout].
@@ -595,7 +610,20 @@ impl Executor {
         self.lookup_executable()?;
         self.log_before_forkexec();
 
-
+        // Create container root dir under `/tmp` dir.
+         let _container_root_dir = if self.container_root_dir.is_none() {
+            self.container_root_dir = Some(contrib::tmpdir::pathname("hakoniwa"));
+           
+            Some(contrib::tmpdir::new(&self.container_root_dir.as_deref().unwrap()).map_err(|err| {
+                Error::_ExecutorRunError(format!(
+                    "create dir {:?} failed: {}",
+                    self.container_root_dir, err
+                ))
+            })?)
+        } else {
+            None
+        };
+        
 
         // Use a pipe to communicate between parent process and child process.
         let cpr_pipe = contrib::nix::io::pipe().map_err(|err| {
@@ -613,6 +641,7 @@ impl Executor {
         };
 
         self.log_after_forkexec(&result);
+        drop(_container_root_dir);
         Ok(result)
     }
 
