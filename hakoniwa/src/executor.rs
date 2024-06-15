@@ -309,7 +309,7 @@ impl Executor {
     }
 
     /// Bind mount the `src` on `dest` in the container.
-    fn _bind<P1: AsRef<Path>, P2: AsRef<Path>>(
+    pub fn _bind<P1: AsRef<Path>, P2: AsRef<Path>>(
         &mut self,
         src: P1,
         dest: P2,
